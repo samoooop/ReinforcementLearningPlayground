@@ -1,5 +1,4 @@
 import gym
-import gym_rle
 import time
 import matplotlib.pyplot as plt
 from keras.models import Sequential, load_model
