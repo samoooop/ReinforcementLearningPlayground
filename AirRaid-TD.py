@@ -2,7 +2,7 @@ import gym
 import time
 import matplotlib.pyplot as plt
 from keras.models import Sequential, load_model
-from keras.layers import Dense, Activation, Convolution2D, Flatten, Dropout
+from keras.layers import Dense, Activation, Convolution2D, Flatten, Dropout, Conv3D
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -12,30 +12,19 @@ import skimage.color as skc
 
 def prep(img):
     # down sample image
-    img = img[30:-60,:,]
+    img = img[60:-30,:,]
     img = img[::2,::2,]
     img = skc.rgb2grey(img)
     img = np.expand_dims(img, axis = 2)
-    
-    imgs[0:3] = imgs[-3:]
-    imgs[3] = img
-    if total_step >= 4:
-        img = imgs[-4:].mean(axis = 0)
-    # print(img.shape)
-    # print(img)
-    # f = open('img.pkl', 'wb')
-    # pickle.dump(img, f, pickle.HIGHEST_PROTOCOL)
-    # plt.imshow(img.reshape(80,80))
-    # plt.imshow()
-    # time.sleep(1)
+
     return img
 
 
 def getModel(action_count):
     model = Sequential()
-    model.add(Convolution2D(16, (8,8), strides = 4,
-                activation='relu', input_shape=(80,80,1)))
-    model.add(Convolution2D(8, (4,4), strides = 2, 
+    model.add(Conv3D(32, (1,8,8), strides = (1,4,4),
+                activation='relu', input_shape=(6,80,80,1)))
+    model.add(Conv3D(16, (1,4,4), strides = (1,4,4), 
                 activation='relu'))
     # model.add(Dropout(0.1))
     model.add(Flatten())
@@ -54,7 +43,7 @@ def getTrainData(histories, expected_rewards, reward):
     # print('xxx',expected_rewards.shape)
     return x, expected_rewards
     
-load = False
+load = True
 env_name = 'AirRaid-v0'
 env = gym.make(env_name)
 obs = env.reset()
@@ -83,31 +72,31 @@ action_picked = np.zeros(6)
 last_reward = np.zeros(10,dtype = np.float)
 i = 0
 j = 0
-e = 0.3
+e = 0.0
 decay_rate = 1.0
 l = 1.0
 learning_rate = 0.2
 imgs = np.zeros((4,80,80,1),dtype = np.float32)
+x = prep(obs)
+state = np.array((x,x,x,x,x,x))
+# x = np.array([x])
 
 while True:
-    x = prep(obs)
-    x = np.array([x])
-
-    expected_reward = model.predict([x])[0]
+    expected_reward = model.predict(np.array([state]))[0]
     action = np.argmax(expected_reward)
     action_picked[action] += 1
     if np.random.rand() < e:
         action = env.action_space.sample()
 
     obs, reward, done, info = env.step(action)
+    new_state = prep(obs)
+    new_state = np.concatenate((state[1:],[new_state]), axis = 0)
     
     if done:
         expected_reward[action] = reward
     else:
-        xp = np.array([prep(obs)])
-        expected_reward_from_next_step = np.max(model.predict([xp])[0])
-        expected_reward[action] = (learning_rate * (reward + l*expected_reward_from_next_step)
-                                    + (1-learning_rate) * expected_reward[action])
+        expected_reward_from_next_step = np.max(model.predict(np.array([new_state]))[0])
+        expected_reward[action] = reward + l*expected_reward_from_next_step
 
     # r = reward
     # step = len(rewards)
@@ -117,11 +106,13 @@ while True:
     #     rewards[step-i][actions[step-i]] += r
     #     r *= l
     # print(reward)
-    # env.render()
+    if i%20 == 0:
+        env.render()
 
     actions.append(action)
     rewards.append(expected_reward)
-    histories.append(x[0])
+    histories.append(state)
+    state = new_state
     # actions.append(action)
 
     total_step += 1
