@@ -40,9 +40,9 @@ def getModel(action_count):
                 # activation='relu'))
     # model.add(Dropout(0.1))
     # model.add(Flatten())
-    model.add(Dense(16, activation='relu', input_shape = (2,4,)))
+    model.add(Dense(16, activation='relu', init = 'uniform', input_shape = (2,4,)))
     model.add(Flatten())
-    model.add(Dense(8, activation = 'relu'))
+    model.add(Dense(8, activation = 'relu', init = 'uniform'))
     # model.add(Dropout(0.1))
     model.add(Dense(action_count))
     return model
@@ -87,7 +87,7 @@ action_picked = np.zeros(6)
 last_reward = np.zeros(10,dtype = np.float)
 i = 0
 j = 0
-e = 0.1
+e = 0.05
 decay_rate = 1.0
 l = 1.0
 learning_rate = 0.2
@@ -103,7 +103,7 @@ while True:
     if np.random.rand() < e:
         action = env.action_space.sample()
 
-    # print(expected_reward,obs,action)
+    # print(expected_reward,action)
     obs, reward, done, info = env.step(action)
 
     # print(state.shape, np.array([obs]).shape)
@@ -142,21 +142,21 @@ while True:
         # fit NN
         x = np.array(histories)
         y = np.array(rewards)
-        if x.shape[0] >= 5000:
+        if x.shape[0] >= 1000:
             choices = np.random.choice(x.shape[0],1000)
             x = x[choices]
             y = y[choices]
         print('training with x:',x.shape,' y:',y.shape)
             # x,y = getTrainData(histories, rewards, total_reward)
-        model.fit(x,y,batch_size = 64, epochs = 20, verbose = 0)
+        model.fit(x,y,batch_size = 64, epochs = 1, verbose = 0)
         score = model.evaluate(x, y, verbose = 0)
         print('show some prediction')
         choices = np.random.choice(x.shape[0], 5)
-        xc = x[choices]
-        yc = y[choices]
-        ypc = model.predict(xc)
-        for k in range(0,5):
-            print(yc[k]-ypc[k])
+        # xc = x[choices]
+        # yc = y[choices]
+        # ypc = model.predict(xc)
+        # for k in range(0,5):
+            # print(yc[k]-ypc[k])
         print('Done training ->',score,model.metrics_names)
         # pred_y = model.predict(x[0:5])
         # for i in range(0,5):
@@ -177,4 +177,6 @@ while True:
         # actions = []
         action_picked = np.zeros(6)
         obs = env.reset()
+        if i > 3000:
+            e = 0.1
 
