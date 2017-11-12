@@ -12,7 +12,7 @@ import skimage.color as skc
 
 def prep(img):
     # down sample image
-    img = img[60:-30,:,]
+    img = img[30:-60,:,]
     img = img[::2,::2,]
     img = skc.rgb2grey(img)
     img = np.expand_dims(img, axis = 2)
@@ -72,7 +72,7 @@ action_picked = np.zeros(6)
 last_reward = np.zeros(10,dtype = np.float)
 i = 0
 j = 0
-e = 0.0
+e = 0.5
 decay_rate = 1.0
 l = 1.0
 learning_rate = 0.2
@@ -106,8 +106,8 @@ while True:
     #     rewards[step-i][actions[step-i]] += r
     #     r *= l
     # print(reward)
-    if i%20 == 0:
-        env.render()
+    # if i%20 == 0:
+    #     env.render()
 
     actions.append(action)
     rewards.append(expected_reward)
