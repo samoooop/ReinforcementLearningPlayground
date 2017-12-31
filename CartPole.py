@@ -98,7 +98,7 @@ action_picked = np.zeros(6)
 last_reward = np.zeros(10,dtype = np.float)
 i = 0
 j = 0
-e = 0.0
+e = 0.2
 decay_rate = 1.0
 l = 0.9
 learning_rate = 0.2
@@ -130,7 +130,7 @@ while True:
     #     expected_reward[action] = reward + l*expected_reward_from_next_step
 
     # if i%20 == 0:
-    # env.render()
+    env.render()
 
     actions.append(action)
     rewards.append(reward)
@@ -171,7 +171,7 @@ while True:
 
         print('training with x:',x.shape,' y:',y.shape)
             # x,y = getTrainData(histories, rewards, total_reward)
-        model.fit(x,y,batch_size = 64, epochs = 10, verbose = 0)
+        model.fit(x,y,batch_size = 64, epochs = 2, verbose = 0)
         score = model.evaluate(x, y, verbose = 0)
         print('show some prediction')
         choices = np.random.choice(x.shape[0], 5)

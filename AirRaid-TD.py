@@ -12,7 +12,7 @@ import skimage.color as skc
 
 def prep(img):
     # down sample image
-    img = img[30:-60,:,]
+    img = img[60:-30,:,]
     img = img[::2,::2,]
     img = skc.rgb2grey(img)
     img = np.expand_dims(img, axis = 2)
@@ -42,12 +42,14 @@ def getTrainData(histories, expected_rewards, reward):
     expected_rewards[:,maxi] = reward
     # print('xxx',expected_rewards.shape)
     return x, expected_rewards
-    
+
+
 load = True
 env_name = 'AirRaid-v0'
 env = gym.make(env_name)
+env.mode = 'normal'
 obs = env.reset()
-# env.render()
+env.render()
 
 if not load:
     model = getModel(env.action_space.n)
@@ -72,7 +74,7 @@ action_picked = np.zeros(6)
 last_reward = np.zeros(10,dtype = np.float)
 i = 0
 j = 0
-e = 0.5
+e = 0
 decay_rate = 1.0
 l = 1.0
 learning_rate = 0.2
@@ -107,7 +109,7 @@ while True:
     #     r *= l
     # print(reward)
     # if i%20 == 0:
-    #     env.render()
+    env.render()
 
     actions.append(action)
     rewards.append(expected_reward)
@@ -134,11 +136,11 @@ while True:
             # choices = np.random.choice(x.shape[0],1000)
             # x = x[choices]
             # y = y[choices]
-        print('training with x:',x.shape,' y:',y.shape)
+        # print('training with x:',x.shape,' y:',y.shape)
             # x,y = getTrainData(histories, rewards, total_reward)
-        model.fit(x,y,batch_size = 32, epochs = 2, verbose = 0)
-        score = model.evaluate(x, y, verbose = 0)
-        print('Done training ->',score,model.metrics_names)
+        # model.fit(x,y,batch_size = 32, epochs = 2, verbose = 0)
+        # score = model.evaluate(x, y, verbose = 0)
+        # print('Done training ->',score,model.metrics_names)
         # pred_y = model.predict(x[0:5])
         # for i in range(0,5):
             # print(pred_y[i],y[i])

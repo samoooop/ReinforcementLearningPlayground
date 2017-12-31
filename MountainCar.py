@@ -1,8 +1,10 @@
 import gym
 import time
 import matplotlib.pyplot as plt
+import keras
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Activation, Convolution2D, Flatten, Dropout
+from keras.optimizers import Adam
 import numpy as np
 import time
 import matplotlib.pyplot as plt
@@ -40,37 +42,47 @@ def getModel(action_count):
                 # activation='relu'))
     # model.add(Dropout(0.1))
     # model.add(Flatten())
-    model.add(Dense(16, activation='relu', input_shape = (2,4,)))
+    model.add(Dense(100, activation='relu', input_shape = (2,8,)))
     model.add(Flatten())
-    model.add(Dense(8, activation = 'relu'))
+    model.add(Dense(50, activation = 'relu'))
+    model.add(Dense(30, activation = 'relu'))
     # model.add(Dropout(0.1))
-    model.add(Dense(action_count))
+    model.add(Dense(action_count, activation='linear'))
     return model
 
-def getTrainData(histories, expected_rewards, reward):
-    x = np.array(histories)
-    # replace maximum reward with actual reward(maximum = action selected)
-    expected_rewards = np.array(expected_rewards)
+def getTrainData(histories, rewards, actions, dones, new_states):
+    expected_rewards = model.predict(histories)
+    expected_rewards_from_next_step = target_network.predict(new_states)
+    expected_rewards_from_next_step = np.max(expected_rewards_from_next_step, axis = 1)
+    # print('z')
+    # actions_index = np.array(actions)
+    not_dones = np.logical_not(dones)
+    # print(dones,type(not_dones),type(done))
+    # print(not_dones,expected_rewards_from_next_step.shape,rewards.shape)
+    # print(expected_rewards_from_next_step.shape,rewards.shape)
+    expected_rewards[dones, actions[dones]] = rewards[dones]
+    expected_rewards[not_dones, actions[not_dones]] = (rewards[not_dones] 
+                                                +  l * expected_rewards_from_next_step[not_dones])
     # print('xxx',expected_rewards.shape)
-    maxi = np.argmax(expected_rewards, axis = 1)
-    expected_rewards[:,maxi] = reward
+    # maxi = np.argmax(expected_rewards, axis = 1)
+    # expected_rewards[:,maxi] = reward
     # print('xxx',expected_rewards.shape)
-    return x, expected_rewards
+    return expected_rewards
     
-load = True
-env_name = 'CartPole-v0'
+load = False
+env_name = 'LunarLander-v2'
 env = gym.make(env_name)
 obs = env.reset()
 # env.render()
 
 if not load:
     model = getModel(env.action_space.n)
-    model.compile(optimizer='sgd',
-                loss='mean_squared_error',
-                metrics=[])
+    model.compile(optimizer=Adam(lr=0.00001),
+                loss='mse')
 else:
     print('loading model')
     model = load_model(env_name + '.h5')
+target_network = keras.models.clone_model(model)
 
 stime = time.time()
 print(env.action_space)
@@ -78,18 +90,21 @@ print(env.observation_space)
 total_step = 0
 total_reward = 0
 
-memory = deque()
+memory = deque(maxlen=300000)
 memory_size = 100
-histories = []
-actions = []
-rewards = []
+histories = deque(maxlen=300000)
+actions = deque(maxlen=300000)
+rewards = deque(maxlen=300000)
+dones = deque(maxlen=300000)
+new_states = deque(maxlen=300000)
 action_picked = np.zeros(6)
 last_reward = np.zeros(10,dtype = np.float)
 i = 0
 j = 0
-e = 0.1
-decay_rate = 1.0
-l = 1.0
+e = 1.0
+decay_rate = 0.999
+min_e = 0.1
+l = 0.99
 learning_rate = 0.2
 x = np.stack((obs, obs), axis = 0)
 print(np.array([x]))
@@ -103,27 +118,30 @@ while True:
     if np.random.rand() < e:
         action = env.action_space.sample()
 
-    # print(expected_reward,obs,action)
+    # print(expected_reward,action)
     obs, reward, done, info = env.step(action)
 
     # print(state.shape, np.array([obs]).shape)
     new_state = np.concatenate((state[0][1:], np.array([obs])), axis = 0)
     new_state = np.array([new_state])
 
-    if done:
-        expected_reward[action] = reward
-    else:
-        # xp = np.array([prep(obs)])
-        # xp = np.array([obs.flatten()])
-        expected_reward_from_next_step = np.max(model.predict(new_state)[0])
-        expected_reward[action] = reward + l*expected_reward_from_next_step
+    # if done:
+    #     expected_reward[action] = reward
+    # else:
+    #     # xp = np.array([prep(obs)])
+    #     # xp = np.array([obs.flatten()])
+    #     expected_reward_from_next_step = np.max(target_network.predict(new_state)[0])
+    #     expected_reward[action] = reward + l*expected_reward_from_next_step
 
-    if i%20 == 0:
-        env.render()
+    # if i%20 == 0:
+        # env.render()
+    # env.render()
 
     actions.append(action)
-    rewards.append(expected_reward)
+    rewards.append(reward)
     histories.append(state[0])
+    dones.append(done)
+    new_states.append(new_state[0])
     # actions.append(action)
 
     state = new_state
@@ -142,22 +160,34 @@ while True:
         # fit NN
         x = np.array(histories)
         y = np.array(rewards)
-        if x.shape[0] >= 5000:
-            choices = np.random.choice(x.shape[0],1000)
+        a = np.array(actions)
+        d = np.array(dones)
+        ns = np.array(new_states)
+        # print('x')
+        if x.shape[0] >= 512:
+            choices = np.random.choice(x.shape[0],512)
             x = x[choices]
             y = y[choices]
+            a = a[choices]
+            d = d[choices]
+            ns = ns[choices]
+        # print('y')
+        y = getTrainData(x, y, a, d, ns)
+
         print('training with x:',x.shape,' y:',y.shape)
             # x,y = getTrainData(histories, rewards, total_reward)
-        model.fit(x,y,batch_size = 64, epochs = 20, verbose = 0)
+        model.fit(x,y,batch_size = 1024, epochs = 7, verbose = 0)
         score = model.evaluate(x, y, verbose = 0)
         print('show some prediction')
-        choices = np.random.choice(x.shape[0], 5)
-        xc = x[choices]
-        yc = y[choices]
-        ypc = model.predict(xc)
-        for k in range(0,5):
-            print(yc[k]-ypc[k])
+        # choices = np.random.choice(x.shape[0], 5)
+        # xc = x[choices]
+        # yc = y[choices]
+        # ypc = model.predict(xc)
+        # for k in range(0,5):
+            # print(yc[k]-ypc[k])
         print('Done training ->',score,model.metrics_names)
+        if i % 100 == 0:
+            target_network = keras.models.clone_model(model)
         # pred_y = model.predict(x[0:5])
         # for i in range(0,5):
             # print(pred_y[i],y[i])
@@ -172,6 +202,8 @@ while True:
         total_step = 0
         total_reward = 0
         e = e * decay_rate
+        if e < min_e:
+            e = min_e
         # histories = []
         # rewards = []
         # actions = []
