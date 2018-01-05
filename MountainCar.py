@@ -52,7 +52,7 @@ def getModel(action_count):
 
 def getTrainData(histories, rewards, actions, dones, new_states):
     expected_rewards = model.predict(histories)
-    expected_rewards_from_next_step = target_network.predict(new_states)
+    expected_rewards_from_next_step = model.predict(new_states)
     expected_rewards_from_next_step = np.max(expected_rewards_from_next_step, axis = 1)
     # print('z')
     # actions_index = np.array(actions)
@@ -69,7 +69,7 @@ def getTrainData(histories, rewards, actions, dones, new_states):
     # print('xxx',expected_rewards.shape)
     return expected_rewards
     
-load = False
+load = True
 env_name = 'LunarLander-v2'
 env = gym.make(env_name)
 obs = env.reset()
@@ -77,7 +77,7 @@ obs = env.reset()
 
 if not load:
     model = getModel(env.action_space.n)
-    model.compile(optimizer=Adam(lr=0.00001),
+    model.compile(optimizer=Adam(lr=0.0001),
                 loss='mse')
 else:
     print('loading model')
@@ -101,8 +101,8 @@ action_picked = np.zeros(6)
 last_reward = np.zeros(10,dtype = np.float)
 i = 0
 j = 0
-e = 1.0
-decay_rate = 0.999
+e = 0.12
+decay_rate = 0.9999
 min_e = 0.1
 l = 0.99
 learning_rate = 0.2
@@ -135,7 +135,7 @@ while True:
 
     # if i%20 == 0:
         # env.render()
-    # env.render()
+    env.render()
 
     actions.append(action)
     rewards.append(reward)
