@@ -22,7 +22,7 @@ def main():
     env = gym.make('GradiusIii-v0')
     env = bench.Monitor(env, logger.get_dir())
     from baselines.common.atari_wrappers import wrap_deepmind
-    env = wrap_deepmind(env, episode_life = False)
+    env = wrap_deepmind(env, episode_life = False, clip_rewards = False)
     model = deepq.models.cnn_to_mlp(
         convs=[(32, 8, 4), (64, 4, 2), (64, 3, 1)],
         hiddens=[256],
@@ -33,16 +33,16 @@ def main():
         q_func=model,
         lr=1e-4,
         max_timesteps=args.num_timesteps,
-        buffer_size=10000,
-        exploration_fraction=0.1,
+        buffer_size=50000,
+        exploration_fraction=0.8,
         exploration_final_eps=0.01,
         train_freq=4,
         learning_starts=10000,
         target_network_update_freq=1000,
-        gamma=0.99,
+        gamma=0.9,
         prioritized_replay=bool(args.prioritized)
     )
-    # act.save("pong_model.pkl") XXX
+    act.save("gradius_model.pkl") 
     env.close()
 
 
