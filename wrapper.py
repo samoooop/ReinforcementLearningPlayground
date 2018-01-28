@@ -1,6 +1,5 @@
 import gym
 
-class ClipRewardEnv(gym.RewardWrapper):
+class SurviveEnv(gym.RewardWrapper):
     def _reward(self, reward):
         return 1
-    
