@@ -8,7 +8,7 @@ from baselines import deepq
 def main():
     env = gym.make('GradiusIii-v0')
     env = wrap_deepmind(env, episode_life = False, clip_rewards = False)
-    act = deepq.load("gradius_model.pkl")
+    act = deepq.load("result/survive.pkl")
 
     while True:
         obs, done = env.reset(), False
